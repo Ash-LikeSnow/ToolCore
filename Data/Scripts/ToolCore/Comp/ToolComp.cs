@@ -50,7 +50,6 @@ namespace ToolCore.Comp
         internal ToolRepo Repo;
 
         internal Task GridsTask = new Task();
-        internal IMyTerminalControlOnOffSwitch ShowInToolbarSwitch;
 
         internal ToolMode Mode;
         internal ToolAction Action;
@@ -258,7 +257,7 @@ namespace ToolCore.Comp
 
             if (!ToolSession.Instance.IsDedicated)
             {
-                GetShowInToolbarSwitch();
+
                 BlockTool.AppendingCustomInfo += AppendingCustomData;
                 RefreshTerminal();
             }
@@ -955,32 +954,21 @@ namespace ToolCore.Comp
             }
 
         }
-
-        private void GetShowInToolbarSwitch()
-        {
-            List<IMyTerminalControl> items;
-            MyAPIGateway.TerminalControls.GetControls<IMyUpgradeModule>(out items);
-
-            foreach (var item in items)
-            {
-
-                if (item.Id == "ShowInToolbarConfig")
-                {
-                    ShowInToolbarSwitch = (IMyTerminalControlOnOffSwitch)item;
-                    break;
-                }
-            }
-        }
-
+        // Simplified the toggle of ShowInToolbarConfig without querying
         internal void RefreshTerminal()
         {
             BlockTool.RefreshCustomInfo();
 
-            if (ShowInToolbarSwitch != null)
+            if (BlockTool != null)
             {
-                var originalSetting = ShowInToolbarSwitch.Getter(BlockTool);
-                ShowInToolbarSwitch.Setter(BlockTool, !originalSetting);
-                ShowInToolbarSwitch.Setter(BlockTool, originalSetting);
+                // Get the current setting of ShowInToolbarConfig
+                bool originalSetting = BlockTool.ShowInToolbarConfig;
+
+                // Temporarily toggle it
+                BlockTool.ShowInToolbarConfig = !originalSetting;
+
+                // Immediately reset it back to the original state
+                BlockTool.ShowInToolbarConfig = originalSetting;
             }
         }
 
@@ -1055,7 +1043,6 @@ namespace ToolCore.Comp
             Grid = null;
             GridComp = null;
 
-            ShowInToolbarSwitch = null;
         }
 
         public override string ComponentTypeDebugString => "ToolCore";

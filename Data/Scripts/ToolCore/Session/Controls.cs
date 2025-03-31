@@ -97,7 +97,7 @@ namespace ToolCore.Session
             _customControls.Add(Separator<T>());
 
             _customControls.Add(ToolShootSwitch<T>());
-            _customControls.Add(ToolTrackTargetsSwitch<T>());
+            //_customControls.Add(ToolTrackTargetsSwitch<T>());
 
             _customControls.Add(SelectMode<T>());
             _customControls.Add(SelectAction<T>());
@@ -124,9 +124,9 @@ namespace ToolCore.Session
             _customActions.Add(CreateActivateOnAction<T>());
             _customActions.Add(CreateActivateOffAction<T>());
 
-            _customActions.Add(CreateTrackTargetsOnOffAction<T>());
-            _customActions.Add(CreateTrackTargetsOnAction<T>());
-            _customActions.Add(CreateTrackTargetsOffAction<T>());
+            //_customActions.Add(CreateTrackTargetsOnOffAction<T>());
+            //_customActions.Add(CreateTrackTargetsOnAction<T>());
+            //_customActions.Add(CreateTrackTargetsOffAction<T>());
 
             _customActions.Add(CreateModeAction<T>());
             _customActions.Add(CreateActionAction<T>());
@@ -145,9 +145,9 @@ namespace ToolCore.Session
 
         internal IMyTerminalControlOnOffSwitch ToolShootSwitch<T>() where T : IMyConveyorSorter
         {
-            var control = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, T>("ToolCore_Shoot");
+            var control = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, T>("ToolCore_Activate");
             control.Title = MyStringId.GetOrCompute("Activate");
-            control.Tooltip = MyStringId.GetOrCompute("Activate tool function");
+            control.Tooltip = MyStringId.GetOrCompute("Activate tool function and tracking");
             control.OnText = MyStringId.GetOrCompute("On");
             control.OffText = MyStringId.GetOrCompute("Off");
             control.Getter = GetActivated;
@@ -156,7 +156,6 @@ namespace ToolCore.Session
             control.Enabled = IsFunctional;
 
             return control;
-
         }
 
         internal bool GetActivated(IMyTerminalBlock block)
@@ -177,14 +176,21 @@ namespace ToolCore.Session
             var wasActivated = comp.Activated;
             comp.Activated = activated;
 
+            // Merge TrackTargets logic
+            if (IsTurret(block))
+            {
+                comp.TrackTargets = activated;
+            }
+
             if (!_session.IsMultiPlayer || comp.Activated == wasActivated) return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, activated));
+            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, activated));
         }
 
         internal IMyTerminalAction CreateActivateOnOffAction<T>() where T : IMyConveyorSorter
         {
-            var action = MyAPIGateway.TerminalControls.CreateAction<T>(SHOOT_ACTION);
+            var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_Activate_Action");
             action.Icon = @"Textures\GUI\Icons\Actions\Toggle.dds";
             action.Name = new StringBuilder("Activate/Deactivate");
             action.Action = ToggleActivated;
@@ -203,10 +209,16 @@ namespace ToolCore.Session
             var wasActivated = comp.Activated;
             comp.Activated = !comp.Activated;
 
-            if (!_session.IsMultiPlayer || comp.Activated == wasActivated)
-                return;
+            // Merge TrackTargets logic
+            if (IsTurret(block))
+            {
+                comp.TrackTargets = comp.Activated;
+            }
+
+            if (!_session.IsMultiPlayer || comp.Activated == wasActivated) return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, comp.Activated));
+            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, comp.TrackTargets));
         }
 
         internal void ToggleActivatedWriter(IMyTerminalBlock block, StringBuilder builder)
@@ -238,6 +250,17 @@ namespace ToolCore.Session
 
             var wasActivated = comp.Activated;
             comp.Activated = true;
+
+            if (IsTurret(block))
+            {
+                var wasTracking = comp.TrackTargets;
+                comp.TrackTargets = true;
+
+                if (_session.IsMultiPlayer && comp.TrackTargets != wasTracking)
+                {
+                    _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, true));
+                }
+            }
 
             if (!_session.IsMultiPlayer || comp.Activated == wasActivated)
                 return;
@@ -274,6 +297,17 @@ namespace ToolCore.Session
 
             var wasActivated = comp.Activated;
             comp.Activated = false;
+
+            if (IsTurret(block))
+            {
+                var wasTracking = comp.TrackTargets;
+                comp.TrackTargets = false;
+
+                if (_session.IsMultiPlayer && comp.TrackTargets != wasTracking)
+                {
+                    _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, false));
+                }
+            }
 
             if (!_session.IsMultiPlayer || comp.Activated == wasActivated)
                 return;
@@ -637,152 +671,152 @@ namespace ToolCore.Session
 
         #region TrackTargets
 
-        internal IMyTerminalControlOnOffSwitch ToolTrackTargetsSwitch<T>() where T : IMyConveyorSorter
-        {
-            var control = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, T>("ToolCore_TrackTargets");
-            control.Title = MyStringId.GetOrCompute("Track Targets");
-            control.Tooltip = MyStringId.GetOrCompute("Enable automatic tracking and targeting of valid blocks");
-            control.OnText = MyStringId.GetOrCompute("On");
-            control.OffText = MyStringId.GetOrCompute("Off");
-            control.Getter = GetTrackTargets;
-            control.Setter = SetTrackTargets;
-            control.Visible = IsTurret;
-            control.Enabled = IsFunctional;
+        // internal IMyTerminalControlOnOffSwitch ToolTrackTargetsSwitch<T>() where T : IMyConveyorSorter
+        // {
+        //    var control = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, T>("ToolCore_TrackTargets");
+        //    control.Title = MyStringId.GetOrCompute("Track Targets");
+        //    control.Tooltip = MyStringId.GetOrCompute("Enable automatic tracking and targeting of valid blocks");
+        //    control.OnText = MyStringId.GetOrCompute("On");
+        //    control.OffText = MyStringId.GetOrCompute("Off");
+        //    control.Getter = GetTrackTargets;
+        //    control.Setter = SetTrackTargets;
+        //    control.Visible = IsTurret;
+        //    control.Enabled = IsFunctional;
+        //
+        //    return control;
+        //
+        // }
+        
+         //internal bool GetTrackTargets(IMyTerminalBlock block)
+         //{
+         //    ToolComp comp;
+         //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+         //        return false;
+         //
+         //    return comp.TrackTargets;
+         //}
 
-            return control;
+        //internal void SetTrackTargets(IMyTerminalBlock block, bool enabled)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    var wasTracking = comp.TrackTargets;
+        //    comp.TrackTargets = enabled;
+        //
+        //    if (!_session.IsMultiPlayer || comp.TrackTargets == wasTracking) return;
+        //
+        //    _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, enabled));
+        //}
 
-        }
+        //internal IMyTerminalAction CreateTrackTargetsOnOffAction<T>() where T : IMyConveyorSorter
+        //{
+        //    var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_TrackTargets_Action");
+        //    action.Icon = @"Textures\GUI\Icons\Actions\Toggle.dds";
+        //    action.Name = new StringBuilder("Toggle Target Tracking");
+        //    action.Action = ToggleTrackTargets;
+        //    action.Writer = ToggleTrackTargetsWriter;
+        //    action.Enabled = IsTurret;
+        //
+        //    return action;
+        //}
 
-        internal bool GetTrackTargets(IMyTerminalBlock block)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return false;
+        //internal void ToggleTrackTargets(IMyTerminalBlock block)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    var wasEnabled = comp.TrackTargets;
+        //    comp.TrackTargets = !comp.TrackTargets;
+        //
+        //    if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
+        //        return;
+        //
+        //    _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, comp.TrackTargets));
+        //}
 
-            return comp.TrackTargets;
-        }
+        //internal void ToggleTrackTargetsWriter(IMyTerminalBlock block, StringBuilder builder)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
+        //}
 
-        internal void SetTrackTargets(IMyTerminalBlock block, bool enabled)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
+        //internal IMyTerminalAction CreateTrackTargetsOnAction<T>() where T : IMyConveyorSorter
+        //{
+        //    var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_TrackTargets_On");
+        //    action.Icon = @"Textures\GUI\Icons\Actions\SwitchOn.dds";
+        //    action.Name = new StringBuilder("Enable Target Tracking");
+        //    action.Action = SetTrackTargetsOn;
+        //    action.Writer = SetTrackTargetsOnWriter;
+        //    action.Enabled = IsTurret;
+        //
+        //    return action;
+        //}
 
-            var wasTracking = comp.TrackTargets;
-            comp.TrackTargets = enabled;
+        //internal void SetTrackTargetsOn(IMyTerminalBlock block)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    var wasEnabled = comp.TrackTargets;
+        //    comp.TrackTargets = true;
+        //
+        //    if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
+        //        return;
+        //
+        //    _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, true));
+        //}
 
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasTracking) return;
+        //internal void SetTrackTargetsOnWriter(IMyTerminalBlock block, StringBuilder builder)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
+        //}
 
-            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, enabled));
-        }
+        //internal IMyTerminalAction CreateTrackTargetsOffAction<T>() where T : IMyConveyorSorter
+        //{
+        //    var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_TrackTargets_Off");
+        //    action.Icon = @"Textures\GUI\Icons\Actions\SwitchOff.dds";
+        //    action.Name = new StringBuilder("Disable Target Tracking");
+        //    action.Action = SetTrackTargetsOff;
+        //    action.Writer = SetTrackTargetsOffWriter;
+        //    action.Enabled = IsTurret;
+        //
+        //    return action;
+        //}
 
-        internal IMyTerminalAction CreateTrackTargetsOnOffAction<T>() where T : IMyConveyorSorter
-        {
-            var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_TrackTargets_Action");
-            action.Icon = @"Textures\GUI\Icons\Actions\Toggle.dds";
-            action.Name = new StringBuilder("Toggle Target Tracking");
-            action.Action = ToggleTrackTargets;
-            action.Writer = ToggleTrackTargetsWriter;
-            action.Enabled = IsTurret;
+        //internal void SetTrackTargetsOff(IMyTerminalBlock block)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    var wasEnabled = comp.TrackTargets;
+        //    comp.TrackTargets = false;
+        //
+        //    if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
+        //        return;
+        //
+        //    _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, false));
+        //}
 
-            return action;
-        }
-
-        internal void ToggleTrackTargets(IMyTerminalBlock block)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
-
-            var wasEnabled = comp.TrackTargets;
-            comp.TrackTargets = !comp.TrackTargets;
-
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
-                return;
-
-            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, comp.TrackTargets));
-        }
-
-        internal void ToggleTrackTargetsWriter(IMyTerminalBlock block, StringBuilder builder)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
-
-            builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
-        }
-
-        internal IMyTerminalAction CreateTrackTargetsOnAction<T>() where T : IMyConveyorSorter
-        {
-            var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_TrackTargets_On");
-            action.Icon = @"Textures\GUI\Icons\Actions\SwitchOn.dds";
-            action.Name = new StringBuilder("Enable Target Tracking");
-            action.Action = SetTrackTargetsOn;
-            action.Writer = SetTrackTargetsOnWriter;
-            action.Enabled = IsTurret;
-
-            return action;
-        }
-
-        internal void SetTrackTargetsOn(IMyTerminalBlock block)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
-
-            var wasEnabled = comp.TrackTargets;
-            comp.TrackTargets = true;
-
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
-                return;
-
-            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, true));
-        }
-
-        internal void SetTrackTargetsOnWriter(IMyTerminalBlock block, StringBuilder builder)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
-
-            builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
-        }
-
-        internal IMyTerminalAction CreateTrackTargetsOffAction<T>() where T : IMyConveyorSorter
-        {
-            var action = MyAPIGateway.TerminalControls.CreateAction<T>("ToolCore_TrackTargets_Off");
-            action.Icon = @"Textures\GUI\Icons\Actions\SwitchOff.dds";
-            action.Name = new StringBuilder("Disable Target Tracking");
-            action.Action = SetTrackTargetsOff;
-            action.Writer = SetTrackTargetsOffWriter;
-            action.Enabled = IsTurret;
-
-            return action;
-        }
-
-        internal void SetTrackTargetsOff(IMyTerminalBlock block)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
-
-            var wasEnabled = comp.TrackTargets;
-            comp.TrackTargets = false;
-
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
-                return;
-
-            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, false));
-        }
-
-        internal void SetTrackTargetsOffWriter(IMyTerminalBlock block, StringBuilder builder)
-        {
-            ToolComp comp;
-            if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
-                return;
-
-            builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
-        }
+        //internal void SetTrackTargetsOffWriter(IMyTerminalBlock block, StringBuilder builder)
+        //{
+        //    ToolComp comp;
+        //    if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
+        //        return;
+        //
+        //    builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
+        //}
 
         #endregion
 
