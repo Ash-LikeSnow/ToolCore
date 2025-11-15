@@ -125,6 +125,7 @@ namespace ToolCore.Comp
         internal int CompTick120;
         internal int LastPushTick;
         internal int ActiveThreads;
+        internal int BrokenTick;
 
         internal int LastGridsTaskTick;
 

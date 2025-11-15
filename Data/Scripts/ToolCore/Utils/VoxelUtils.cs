@@ -221,7 +221,7 @@ namespace ToolCore
                             }
 
                             harvestRatio *= toolValues.HarvestRatio;
-                            if (harvestRatio > 0 && session.IsServer && validVoxel && voxelDef.CanBeHarvested && !string.IsNullOrEmpty(voxelDef.MinedOre))
+                            if (harvestRatio > 0 && session.IsServer && validVoxel && !string.IsNullOrEmpty(voxelDef.MinedOre))
                             {
                                 var yield = harvestRatio * voxelDef.MinedOreRatio * session.VoxelHarvestRatio * removal / 255f;
 
@@ -426,7 +426,7 @@ namespace ToolCore
                             }
 
                             harvestRatio *= toolValues.HarvestRatio;
-                            if (harvestRatio > 0 && session.IsServer && validVoxel && voxelDef.CanBeHarvested && !string.IsNullOrEmpty(voxelDef.MinedOre))
+                            if (harvestRatio > 0 && session.IsServer && validVoxel && !string.IsNullOrEmpty(voxelDef.MinedOre))
                             {
                                 var yield = removal * harvestRatio * voxelDef.MinedOreRatio * session.VoxelHarvestRatio / 255f;
 
@@ -674,7 +674,7 @@ namespace ToolCore
                             }
 
                             harvestRatio *= toolValues.HarvestRatio;
-                            if (harvestRatio > 0 && session.IsServer && validVoxel && voxelDef.CanBeHarvested && !string.IsNullOrEmpty(voxelDef.MinedOre))
+                            if (harvestRatio > 0 && session.IsServer && validVoxel && !string.IsNullOrEmpty(voxelDef.MinedOre))
                             {
                                 var yield = removal * harvestRatio * voxelDef.MinedOreRatio * session.VoxelHarvestRatio / 255f;
                                 if (!comp.Yields.TryAdd(voxelDef.MinedOre, yield))
@@ -880,7 +880,7 @@ namespace ToolCore
                             }
 
                             harvestRatio *= toolValues.HarvestRatio;
-                            if (harvestRatio > 0 && session.IsServer && validVoxel && voxelDef.CanBeHarvested && !string.IsNullOrEmpty(voxelDef.MinedOre))
+                            if (harvestRatio > 0 && session.IsServer && validVoxel && !string.IsNullOrEmpty(voxelDef.MinedOre))
                             {
                                 var yield = removal * harvestRatio * voxelDef.MinedOreRatio * session.VoxelHarvestRatio / 255f;
 

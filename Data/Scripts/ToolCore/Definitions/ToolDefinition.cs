@@ -374,7 +374,7 @@ namespace ToolCore.Definitions
                     halfExtent = new Vector3(radius, radius, length * 0.5f);
                     EffectBox = new BoundingBox(-halfExtent, halfExtent);
                     EffectSphere = new BoundingSphereD(Vector3D.Zero, halfExtent.Length());
-                    boundingRadius = (float)halfExtent.Length();
+                    boundingRadius = length;
                     break;
                 case EffectShape.Cuboid:
                     EffectBox = new BoundingBox(-halfExtent, halfExtent);

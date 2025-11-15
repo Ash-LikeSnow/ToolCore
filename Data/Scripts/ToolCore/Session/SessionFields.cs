@@ -82,6 +82,8 @@ namespace ToolCore.Session
         internal volatile bool PbApiInited;
 
         internal static ToolSession Instance;
+        internal const float Pi = (float)Math.PI;
+        internal const float Pi2 = (float)(Math.PI * 2);
 
 
         public ToolSession()

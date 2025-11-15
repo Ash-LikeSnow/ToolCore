@@ -30,9 +30,6 @@ namespace ToolCore.Comp
             CompTick20 = Grid.EntityId % 20;
             CompTick60 = Grid.EntityId % 60;
 
-            //Grid.OnBlockAdded += BlockAdded;
-            //Grid.OnBlockClosed += BlockClosed;
-
             Grid.OnFatBlockAdded += FatBlockAdded;
             Grid.OnFatBlockRemoved += FatBlockRemoved;
 
@@ -55,8 +52,6 @@ namespace ToolCore.Comp
 
         internal void Clean()
         {
-            Grid.OnBlockAdded -= BlockAdded;
-            Grid.OnBlockClosed -= BlockClosed;
 
             Grid.OnFatBlockAdded -= FatBlockAdded;
             Grid.OnFatBlockRemoved -= FatBlockRemoved;
@@ -64,6 +59,13 @@ namespace ToolCore.Comp
             Grid = null;
 
             ToolComps.Clear();
+        }
+
+        internal void UpdateWeaponSys()
+        {
+            var weaponSystem = ((IMyCubeGrid)Grid).WeaponSystem;
+            foreach (var comp in ToolComps)
+                weaponSystem.Register(comp.GunBase);
         }
 
         internal void FatBlockAdded(MyCubeBlock block)
@@ -95,17 +97,6 @@ namespace ToolCore.Comp
                 }
             }
         }
-
-        private void BlockAdded(IMySlimBlock slim)
-        {
-            //Dirty = true;
-        }
-
-        private void BlockClosed(IMySlimBlock slim)
-        {
-            //Dirty = true;
-        }
-
     }
 
     internal class GroupMap
@@ -128,6 +119,7 @@ namespace ToolCore.Comp
                 return;
 
             gridComp.GroupMap = this;
+            gridComp.UpdateWeaponSys();
         }
 
         public void OnGridRemoved(IMyGridGroupData oldGroup, IMyCubeGrid grid, IMyGridGroupData newGroup)

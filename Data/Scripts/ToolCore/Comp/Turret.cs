@@ -33,6 +33,7 @@ namespace ToolCore.Comp
         internal bool Aligned;
         internal bool IsValid;
         internal int LastRefreshTick;
+        internal int LastTargetTick = int.MaxValue;
 
         internal void UpdateModelData(ToolComp comp)
         {
@@ -125,6 +126,7 @@ namespace ToolCore.Comp
             var desiredAngle1 = (float)Vector3.Angle(desiredFacing1, Part1.Facing) * Math.Sign(Vector3.Dot(desiredFacing1, Part1.Normal));
             if (Part1.Definition.RotationCapped && (desiredAngle1 > Part1.Definition.MaxRotation || desiredAngle1 < Part1.Definition.MinRotation))
             {
+                Part1.OutOfBounds = true;
                 return false;
             }
 
@@ -144,12 +146,13 @@ namespace ToolCore.Comp
                 var desiredAngle2 = (float)Vector3.Angle(desiredFacing2, finalFacing) * Math.Sign(Vector3.Dot(desiredFacing2, Part2.Normal));
                 if (Part2.Definition.RotationCapped && (desiredAngle2 > Part2.Definition.MaxRotation || desiredAngle2 < Part2.Definition.MinRotation))
                 {
+                    Part2.OutOfBounds = true;
                     return false;
                 }
-
+                Part2.OutOfBounds = false;
                 Part2.DesiredRotation = desiredAngle2;
             }
-
+            Part1.OutOfBounds = false;
             Part1.DesiredRotation = desiredAngle1;
 
             return true;
@@ -188,12 +191,14 @@ namespace ToolCore.Comp
                     continue;
                 }
 
+                ActiveTarget = next;
+                if (false && !TrackTarget())
+                    continue;
                 HadTarget = HasTarget;
                 HasTarget = true;
-                ActiveTarget = next;
                 if (Comp.IsBlock) Comp.RefreshTerminal();
 
-                //var target = ActiveTarget.FatBlock?.DisplayNameText ?? ActiveTarget.BlockDefinition.DisplayNameText;
+                var target = ActiveTarget.FatBlock?.DisplayNameText ?? ActiveTarget.BlockDefinition.DisplayNameText;
                 //Logs.WriteLine($"Targeting " + target);
                 return;
             }
@@ -295,6 +300,7 @@ namespace ToolCore.Comp
             internal float CurrentRotation;
             internal float DesiredRotation;
             internal float VisualRotation;
+            internal bool OutOfBounds;
 
             internal TurretPart(TurretDefinition.TurretPartDef def)
             {

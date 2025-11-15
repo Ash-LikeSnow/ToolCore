@@ -63,10 +63,12 @@ namespace ToolCore.Session
 
         private void UpdateComp(ToolComp comp)
         {
+            var step = "";
             try
             {
                 var modeData = comp.ModeData;
                 var def = modeData.Definition;
+                step = "UpdateTool";
 
                 UpdateTool(comp);
 
@@ -81,42 +83,48 @@ namespace ToolCore.Session
                     UpdateHitState(comp);
 
                 if (!IsDedicated && comp.Draw && comp.Functional)
+                {
+                    step = "DrawComp";
                     DrawComp(comp);
+                }
 
                 if (!IsDedicated && def.Debug)
                 {
                     DrawDebug(comp);
                 }
 
-                if (comp.Broken)
+                if (comp.Broken && comp.BrokenTick != Tick)
                     UnregisterBrokenComp(comp);
             }
             catch (Exception ex)
             {
                 if (!comp.Broken)
                 {
-                    RegisterBrokenComp(comp, ex);
+                    RegisterBrokenComp(comp, ex, step);
                 }
             }
         }
 
-        private void RegisterBrokenComp(ToolComp comp, Exception ex)
+        private void RegisterBrokenComp(ToolComp comp, Exception ex, string msg = "")
         {
             comp.Broken = true;
-            Logs.LogException(ex);
 
-            if (comp.IsBlock)
+            if (comp.BrokenTick == 0)
             {
-                Logs.WriteLine($"{comp.BlockTool.CustomName} on grid {comp.Grid.DisplayName} is broken!");
-                return;
-            }
+                Logs.LogException(ex);
 
-            Logs.WriteLine($"{comp.HandTool.DefinitionId.SubtypeName} on player {((IMyCharacter)comp.Parent).DisplayName} is broken!");
+                if (comp.IsBlock)
+                    Logs.WriteLine($"{comp.BlockTool.CustomName} on grid {comp.Grid.DisplayName} is broken!");
+                else
+                    Logs.WriteLine($"{comp.HandTool.DefinitionId.SubtypeName} on player {((IMyCharacter)comp.Parent).DisplayName} is broken!");
+            }
+            comp.BrokenTick = Tick;
         }
 
         private void UnregisterBrokenComp(ToolComp comp)
         {
             comp.Broken = false;
+            comp.BrokenTick = 0;
 
             if (comp.IsBlock)
             {
@@ -250,7 +258,7 @@ namespace ToolCore.Session
 
                 if (!comp.Broken)
                 {
-                    Logs.WriteLine($"Location: {def.Location} - Emitter Part Null: {modeData.MuzzlePart == null} - Parent Null: {comp.Parent == null}");
+                    Logs.WriteLine($"Location: {def.Location} - Emitter Part Null: {modeData.MuzzlePart == null} - Parent Null: {comp.Parent == null} - Muzzle Null: {modeData.Muzzle == null}");
                     RegisterBrokenComp(comp, ex);
                 }
             }
@@ -331,6 +339,9 @@ namespace ToolCore.Session
             Vector3D worldPos, worldForward, worldUp;
             CalculateWorldVectors(comp, out worldPos, out worldForward, out worldUp);
 
+            if (modeData.Definition.EffectShape == EffectShape.Cylinder)
+                worldPos = worldPos - worldForward * comp.Values.Length * 0.5f;
+
             var activated = comp.Activated;
             var handToolShooting = !isBlock && comp.HandTool.IsShooting;
             var shooting = activated || handToolShooting || comp.GunBase.Shooting;
@@ -364,7 +375,7 @@ namespace ToolCore.Session
                         var closing = target.CubeGrid.MarkedForClose || target.FatBlock != null && target.FatBlock.MarkedForClose;
                         var finished = target.IsFullyDismounted || comp.Mode == ToolMode.Weld && projector == null && target.IsFullIntegrity && !target.HasDeformation;
                         var outOfRange = Vector3D.DistanceSquared(target.CubeGrid.GridIntegerToWorld(target.Position), worldPos) > turret.Definition.TargetRadiusSqr;
-                        if (closing || finished || outOfRange || (projector != null && projector.CanBuild(target, true) != BuildCheckResult.OK))
+                        if (closing || finished || outOfRange || (projector != null && projector.CanBuild(target, true) != BuildCheckResult.OK) || !turret.TrackTarget())
                         {
                             turret.DeselectTarget();
                         }
@@ -379,7 +390,11 @@ namespace ToolCore.Session
                         turret.SelectNewTarget(worldPos);
                     }
 
-                    if (!turret.HasTarget && !turret.HadTarget)
+                    if (turret.HasTarget)
+                        turret.LastTargetTick = Tick;
+
+                    //Delay at least a couple projector updates to ensure no targets before returning home
+                    if (!turret.HasTarget && turret.Part1.DesiredRotation != 0 && turret.LastTargetTick + 200 <= Tick)
                     {
                         turret.GoHome();
                     }
@@ -387,6 +402,16 @@ namespace ToolCore.Session
 
                 var part1 = turret.Part1;
                 var diff1 = part1.DesiredRotation - part1.CurrentRotation;
+
+                //Checks for closest angle crossing over +/-Pi
+                if (diff1 > Pi || diff1 < -Pi)
+                {
+                    if (diff1 < -Pi)
+                        diff1 = Pi2 + diff1;
+                    else
+                        diff1 = -(Pi2 - diff1);
+                }
+
                 if (!MyUtils.IsZero(diff1, 0.001f))
                 {
                     var amount = MathHelper.Clamp(diff1, -part1.Definition.RotationSpeed, part1.Definition.RotationSpeed);
@@ -444,7 +469,7 @@ namespace ToolCore.Session
                 }
 
                 var angleSqr = diff1 * diff1 + diff2 * diff2;
-                var aligned = turret.HasTarget && angleSqr < turret.Definition.AimingToleranceSqr;
+                var aligned = turret.HasTarget && !part1.OutOfBounds && turret.HasTwoParts ? !turret.Part2.OutOfBounds : true && angleSqr < turret.Definition.AimingToleranceSqr;
                 if (aligned != turret.Aligned)
                 {
                     turret.Aligned = aligned;
@@ -500,9 +525,9 @@ namespace ToolCore.Session
             if (!IsDedicated || workTick && def.EffectShape == EffectShape.Ray)
             {
                 if (def.EffectShape == EffectShape.Cylinder)
-                    MyAPIGateway.Physics.CastRay(worldPos - worldForward * toolValues.Length * 0.5f, worldPos + worldForward * toolValues.Length * 0.5f, out hitInfo);
+                    MyAPIGateway.Physics.CastRay(worldPos, worldPos + worldForward * toolValues.Length, out hitInfo);
                 else if (def.EffectShape == EffectShape.Sphere)
-                    MyAPIGateway.Physics.CastRay(worldPos - worldForward * toolValues.Length, worldPos + worldForward * toolValues.Length, out hitInfo);
+                    MyAPIGateway.Physics.CastRay(worldPos, worldPos + worldForward * toolValues.Length, out hitInfo);
                 else if  (def.EffectShape == EffectShape.Cuboid)
                     MyAPIGateway.Physics.CastRay(worldPos - worldForward * toolValues.Length * 0.707f, worldPos + worldForward * toolValues.Length * 0.707f, out hitInfo);
                 else
@@ -537,7 +562,7 @@ namespace ToolCore.Session
 
             if (comp.ActiveThreads > 0 || !comp.GridsTask.IsComplete || !comp.CallbackComplete)
                 return;
-
+            //TODO: fix hanging debug draws when block is done/turret is done working
             comp.DrawBoxes.ClearList();
 
             if (def.CacheBlocks && comp.Mode != ToolMode.Drill)
@@ -647,7 +672,8 @@ namespace ToolCore.Session
                                 continue;
                             break;
                         case EffectShape.Cylinder:
-                            var offset = obb.Center - worldPos;
+                            var cylCtr = worldPos + worldForward * toolValues.Length * 0.5;
+                            var offset = obb.Center - cylCtr;
                             var halfEdge = entity.PositionComp.LocalAABB.HalfExtents.AbsMax();
 
                             var radial = Vector3D.ProjectOnPlane(ref offset, ref worldForward);

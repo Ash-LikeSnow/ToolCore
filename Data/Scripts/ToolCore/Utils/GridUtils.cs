@@ -192,6 +192,7 @@ namespace ToolCore
         {
             var endOffset = forward * (length / 2);
             var endOffsetAbs = Vector3D.Abs(endOffset);
+            centre = centre + endOffset;
 
             //if (debug)
             //{
@@ -708,7 +709,8 @@ namespace ToolCore
                         }
 
                         var builtBy = comp.IsBlock ? comp.BlockTool.SlimBlock.BuiltBy : ownerId;
-                        projector.Build(slim, ownerId, comp.ToolEntity.EntityId, true, builtBy);
+                        //Temp check for MP active to avoid NRE in HasClientArmor
+                        projector.Build(slim, ToolSession.Instance.IsMultiPlayer ? ownerId : MyAPIGateway.Session.Player.IdentityId, comp.ToolEntity.EntityId, true, builtBy);
 
                         if (def.CacheBlocks)
                         {
@@ -1033,7 +1035,8 @@ namespace ToolCore
                         }
 
                         var builtBy = comp.IsBlock ? comp.BlockTool.SlimBlock.BuiltBy : ownerId;
-                        projector.Build(slim, ownerId, tool.EntityId, true, builtBy);
+                        //Temp check for MP active to avoid NRE in HasClientArmor
+                        projector.Build(slim, session.IsMultiPlayer ? ownerId : MyAPIGateway.Session.Player.IdentityId, tool.EntityId, true, builtBy);
 
                         if (def.CacheBlocks)
                         {
