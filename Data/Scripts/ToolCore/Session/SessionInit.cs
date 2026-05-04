@@ -206,27 +206,23 @@ namespace ToolCore.Session
                     if (definition.Id.TypeId == sorterType)
                         continue;
 
-                    ModifyHandToolDefinition(definition.Id);
+                    MyDefinitionId Id = definition.Id;
+                    var handDef = MyDefinitionManager.Static.TryGetHandItemDefinition(ref Id) as MyEngineerToolBaseDefinition;
+                    if (handDef == null)
+                        return;
+
+                    if (handDef is MyHandDrillDefinition)
+                    {
+                        var drill = (MyHandDrillDefinition)handDef;
+                        drill.HarvestRatioMultiplier = 0f;
+                        drill.DistanceMultiplier = 0f;
+                        return;
+                    }
+                    handDef.DistanceMultiplier = values[j].Length / 2; //Default reach distance is 2m, total formula = 2m * mult * 3
+                    handDef.SpeedMultiplier = 0f;
                 }
 
             }
-        }
-
-        private void ModifyHandToolDefinition(MyDefinitionId id)
-        {
-            var def = MyDefinitionManager.Static.TryGetHandItemDefinition(ref id) as MyEngineerToolBaseDefinition;
-            if (def == null)
-                return;
-
-            if (def is MyHandDrillDefinition)
-            {
-                var drill = (MyHandDrillDefinition)def;
-                drill.DistanceMultiplier = 0f;
-                drill.HarvestRatioMultiplier = 0f;
-                return;
-            }
-
-            def.SpeedMultiplier = 0f;
         }
 
         private void InitPlayers()

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using ToolCore.Comp;
+using ToolCore.Utils;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
@@ -27,6 +28,7 @@ namespace ToolCore.Session
             "removeFromSelectionButton",
             "candidatesList",
             "addToSelectionButton",
+            "SearchField",
         };
 
         private readonly List<MyTerminalControlComboBoxItem> _modeList = new List<MyTerminalControlComboBoxItem>();
@@ -51,11 +53,6 @@ namespace ToolCore.Session
         {
             if (!(block is IMyConveyorSorter) || !_session.DefinitionMap.ContainsKey(block.BlockDefinition))
                 return;
-
-            controls.RemoveRange(28, 7);
-
-            foreach (var newControl in _customControls)
-                controls.Add(newControl);
 
             GetMode(block);
             GetAction(block);
@@ -117,8 +114,14 @@ namespace ToolCore.Session
             _customControls.Add(PickColourButton<T>());
             _customControls.Add(SetColourPickerButton<T>());
 
-            //foreach (var control in _customControls)
-            //    MyAPIGateway.TerminalControls.AddControl<T>(control);
+            List<IMyTerminalControl> controls;
+            MyAPIGateway.TerminalControls.GetControls<T>(out controls);
+            foreach (var oldControl in controls)
+                if (_controlsToHide.Contains(oldControl.Id))
+                    oldControl.Visible = IsFalse;
+
+            foreach (var control in _customControls)
+                MyAPIGateway.TerminalControls.AddControl<T>(control);
 
             _customActions.Add(CreateActivateOnOffAction<T>());
             _customActions.Add(CreateActivateOnAction<T>());

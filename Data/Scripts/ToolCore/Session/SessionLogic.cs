@@ -330,14 +330,13 @@ namespace ToolCore.Session
 
             if (isBlock && !block.Enabled)
                 return;
-
-            var fill = comp.Inventory.VolumeFillFactor;
-            var needsPushing = comp.CompTick60 == TickMod60 && (fill > 0f || comp.Yields.Count > 0);
-            if (IsServer && comp.Mode != ToolMode.Weld && needsPushing)
-                comp.ManageInventory();
-
             Vector3D worldPos, worldForward, worldUp;
             CalculateWorldVectors(comp, out worldPos, out worldForward, out worldUp);
+
+            var fill = comp.Inventory.VolumeFillFactor;
+            var needsPushing = comp.IsBlock ? comp.CompTick60 == TickMod60 && (fill > 0f || comp.Yields.Count > 0) : comp.CompTick60 == TickMod60 && comp.Yields.Count > 0;
+            if (IsServer && comp.Mode != ToolMode.Weld && needsPushing)
+                comp.ManageInventory(worldPos, worldForward, worldUp);
 
             if (modeData.Definition.EffectShape == EffectShape.Cylinder)
                 worldPos = worldPos - worldForward * comp.Values.Length * 0.5f;
@@ -660,7 +659,7 @@ namespace ToolCore.Session
                     if (entity is IMyCharacter && !def.DamageCharacters)
                         continue;
 
-                    if (!isBlock && !def.AffectOwnGrid && entity == comp.Parent)
+                    if (!isBlock && ((!def.AffectOwnGrid && entity == comp.Parent) || (comp.Mode == ToolMode.Drill && entity is IMyFloatingObject)))
                         continue;
 
                     var obb = new MyOrientedBoundingBoxD(entity.PositionComp.LocalAABB, entity.PositionComp.WorldMatrixRef);
