@@ -1,6 +1,5 @@
 ﻿using Sandbox.Game.Entities;
 using System.Collections.Generic;
-using ToolCore.Comp;
 using ToolCore.Definitions.Serialised;
 using ToolCore.Session;
 using ToolCore.Utils;
@@ -27,12 +26,14 @@ namespace ToolCore.Definitions
         internal readonly int UpdateInterval;
         internal readonly float ActivePower;
         internal readonly float IdlePower;
+        internal readonly float NonFriendlyMult;
         internal readonly bool DamageCharacters;
         internal readonly bool PickUpFloatings;
         internal readonly bool AffectOwnGrid;
         internal readonly bool CacheBlocks;
         internal readonly bool Debug;
         internal readonly bool IsTurret;
+        internal readonly bool GrindToWaste;
         internal readonly bool? ShowTargetControls;
 
         internal readonly TurretDefinition Turret;
@@ -305,6 +306,8 @@ namespace ToolCore.Definitions
             AffectOwnGrid = values.AffectOwnGrid;
             Debug = !session.IsDedicated && values.Debug;
             ShowTargetControls = values.ShowTargetControls;
+            NonFriendlyMult = values.NonFriendlyMult;
+            GrindToWaste = values.GrindToWaste;
 
             DefineParameters(values, session);
             IsTurret = DefineTurret(values.Turret, out Turret);

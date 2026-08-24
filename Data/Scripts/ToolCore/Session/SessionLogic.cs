@@ -338,7 +338,7 @@ namespace ToolCore.Session
             if (IsServer && comp.Mode != ToolMode.Weld && needsPushing)
                 comp.ManageInventory(worldPos, worldForward, worldUp);
 
-            if (modeData.Definition.EffectShape == EffectShape.Cylinder)
+            if (modeData.Definition.EffectShape == EffectShape.Cylinder && modeData.Definition.Location != Location.Centre)
                 worldPos = worldPos - worldForward * comp.Values.Length * 0.5f;
 
             var activated = comp.Activated;
@@ -780,6 +780,13 @@ namespace ToolCore.Session
                         var box = comp.Obb.GetAABB();
                         minExtent = Vector3I.Round(localCentre - box.HalfExtents);
                         maxExtent = Vector3I.Round(localCentre + box.HalfExtents);
+                    }
+                    else if (def.EffectShape == EffectShape.Cylinder)
+                    {
+                        //TODO more efficiently bound the cylinder in the box
+                        var offset = Math.Max(toolValues.Length, toolValues.Radius);
+                        minExtent = Vector3I.Round(localCentre - offset);
+                        maxExtent = Vector3I.Round(localCentre + offset);
                     }
                     else
                     {

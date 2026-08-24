@@ -6,6 +6,8 @@ using IMyCubeGrid = VRage.Game.ModAPI.Ingame.IMyCubeGrid;
 using ToolCore.Session;
 using VRage.Game.Entity;
 using ToolCore.Comp;
+using VRage.Game;
+using VRage.Utils;
 
 namespace ToolCore.API
 {
@@ -24,6 +26,7 @@ namespace ToolCore.API
             {
                 ["RegisterEventMonitor"] = new Action<MyEntity, Action<int, bool>>(RegisterEventMonitorCallback),
                 ["UnRegisterEventMonitor"] = new Action<MyEntity, Action<int, bool>>(UnRegisterEventMonitorCallback),
+                ["GetTCDefs"] = new Action<ICollection<MyStringHash>>(TCGetDefs),
             };
         }
 
@@ -40,7 +43,11 @@ namespace ToolCore.API
             MyAPIGateway.TerminalControls.AddControl<IMyProgrammableBlock>(pb);
             _session.PbApiInited = true;
         }
-
+        private void TCGetDefs(ICollection<MyStringHash> collection)
+        {
+            foreach (var def in _session.DefinitionMap)
+                collection.Add(MyStringHash.GetOrCompute(def.Key.SubtypeId));
+        }
 
         private void PbRegisterEventMonitorCallback(IMyTerminalBlock tool, Action<int, bool> callBack) => RegisterEventMonitorCallback((MyEntity)tool, callBack);
         private void RegisterEventMonitorCallback(MyEntity tool, Action<int, bool> callBack)

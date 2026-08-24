@@ -30,6 +30,12 @@ namespace ToolCore.Session
             "addToSelectionButton",
             "SearchField",
         };
+        private readonly HashSet<string> _actionssToHide = new HashSet<string>()
+        {
+            "DrainAll",
+            "DrainAll_On",
+            "DrainAll_Off"
+        };
 
         private readonly List<MyTerminalControlComboBoxItem> _modeList = new List<MyTerminalControlComboBoxItem>();
         private readonly List<MyTerminalControlComboBoxItem> _actionList = new List<MyTerminalControlComboBoxItem>();
@@ -66,12 +72,19 @@ namespace ToolCore.Session
 
             if (_session.DefinitionMap.ContainsKey(block.BlockDefinition))
             {
-                actions.RemoveAt(13);
+                for (int i = 0; i < actions.Count; i++)
+                {
+                    var action = actions[i];
+                    if (_actionssToHide.Contains(action.Id))
+                    {
+                        actions.Remove(action);
+                        i--;
+                    }
+                }
                 return;
             }
 
-            int index;
-            for (index = 0; index < actions.Count; index++)
+            for (int index = 0; index < actions.Count; index++)
             {
                 var action = actions[index];
                 if (action.Id == SHOOT_ACTION)
@@ -91,8 +104,6 @@ namespace ToolCore.Session
                 return;
             }
 
-            _customControls.Add(Separator<T>());
-
             _customControls.Add(ToolShootSwitch<T>());
             _customControls.Add(ToolTrackTargetsSwitch<T>());
 
@@ -100,14 +111,14 @@ namespace ToolCore.Session
             _customControls.Add(SelectAction<T>());
             _customControls.Add(DrawSwitch<T>());
 
-            _customControls.Add(Separator<T>());
+            _customControls.Add(SeparatorTurret<T>());
 
             _customControls.Add(ToolTargetOwn<T>());
             _customControls.Add(ToolTargetFriendly<T>());
             _customControls.Add(ToolTargetNeutral<T>());
             _customControls.Add(ToolTargetHostile<T>());
 
-            _customControls.Add(Separator<T>());
+            _customControls.Add(SeparatorTurret<T>());
 
             _customControls.Add(UseWorkColourSwitch<T>());
             _customControls.Add(SelectWorkColour<T>());
@@ -117,8 +128,13 @@ namespace ToolCore.Session
             List<IMyTerminalControl> controls;
             MyAPIGateway.TerminalControls.GetControls<T>(out controls);
             foreach (var oldControl in controls)
+            {
                 if (_controlsToHide.Contains(oldControl.Id))
-                    oldControl.Visible = IsFalse;
+                {
+                    var prevVisibleFunc = oldControl.Visible;
+                    oldControl.Visible = block => (prevVisibleFunc?.Invoke(block) ?? true) && NotTcBlock(block);
+                }
+            }
 
             foreach (var control in _customControls)
                 MyAPIGateway.TerminalControls.AddControl<T>(control);
@@ -143,7 +159,10 @@ namespace ToolCore.Session
             foreach (var action in _customActions)
                 MyAPIGateway.TerminalControls.AddAction<T>(action);
         }
-
+        internal bool NotTcBlock(IMyTerminalBlock block)
+        {
+            return !_session.DefinitionMap.ContainsKey(block.BlockDefinition);
+        }
         #region Activate
 
         internal IMyTerminalControlOnOffSwitch ToolShootSwitch<T>() where T : IMyConveyorSorter
@@ -155,7 +174,7 @@ namespace ToolCore.Session
             control.OffText = MyStringId.GetOrCompute("Off");
             control.Getter = GetActivated;
             control.Setter = SetActivated;
-            control.Visible = IsTrue;
+            control.Visible = IsTCBlock;
             control.Enabled = IsFunctional;
 
             return control;
@@ -522,7 +541,7 @@ namespace ToolCore.Session
             control.OffText = MyStringId.GetOrCompute("Off");
             control.Getter = GetDraw;
             control.Setter = SetDraw;
-            control.Visible = IsTrue;
+            control.Visible = IsTCBlock;
             control.Enabled = IsFunctional;
 
             return control;
@@ -594,7 +613,17 @@ namespace ToolCore.Session
             var c = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSeparator, T>("ToolCore_Separator");
 
             c.Enabled = IsTrue;
-            c.Visible = IsTrue;
+            c.Visible = IsTCBlock;
+
+            return c;
+        }
+
+        internal IMyTerminalControlSeparator SeparatorTurret<T>() where T : IMyTerminalBlock
+        {
+            var c = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSeparator, T>("ToolCore_Separator");
+
+            c.Enabled = IsTrue;
+            c.Visible = ShowTargetControls;
 
             return c;
         }
@@ -631,9 +660,9 @@ namespace ToolCore.Session
             return true;
         }
 
-        internal bool IsFalse(IMyTerminalBlock block)
-        {
-            return false;
+        internal bool IsTCBlock(IMyTerminalBlock block)
+        { 
+            return _session.DefinitionMap.ContainsKey(block.BlockDefinition);
         }
 
         #endregion

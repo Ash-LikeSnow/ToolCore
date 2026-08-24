@@ -1,7 +1,9 @@
 ﻿using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
+using VRage.Game;
 using VRage.Game.Entity;
+using VRage.Utils;
 
 namespace ToolCore.API
 {
@@ -45,6 +47,7 @@ namespace ToolCore.API
 
         private Action<MyEntity, Action<int, bool>> _monitorEvents;
         private Action<MyEntity, Action<int, bool>> _unmonitorEvents;
+        private Action<ICollection<MyStringHash>> _tcDefs;
 
         public bool IsReady { get; private set; }
 
@@ -99,6 +102,8 @@ namespace ToolCore.API
 
             AssignMethod(delegates, "RegisterEventMonitor", ref _monitorEvents);
             AssignMethod(delegates, "UnRegisterEventMonitor", ref _unmonitorEvents);
+            AssignMethod(delegates, "GetTCDefs", ref _tcDefs);
+
         }
 
         private void AssignMethod<T>(IReadOnlyDictionary<string, Delegate> delegates, string name, ref T field)

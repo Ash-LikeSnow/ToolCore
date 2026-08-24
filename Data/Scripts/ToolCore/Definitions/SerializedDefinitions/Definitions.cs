@@ -39,7 +39,8 @@ namespace ToolCore.Definitions.Serialised
 
         public float IdlePower = 0f;
         public float ActivePower = 1f;
-
+        public float NonFriendlyMult = 0f;
+        public bool GrindToWaste = false;
         public bool DamageCharacters = true;
         public bool PickUpFloatings = false;
         public bool AffectOwnGrid = false;

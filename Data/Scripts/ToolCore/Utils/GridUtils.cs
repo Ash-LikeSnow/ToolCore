@@ -1,4 +1,5 @@
 ﻿using Sandbox.Definitions;
+using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using System;
@@ -518,8 +519,10 @@ namespace ToolCore
             var inventory = comp.Inventory;
             var toolValues = comp.Values;
             var maxBlocks = def.Rate;
-
-            var grindAmount = toolValues.Speed * MyAPIGateway.Session.GrinderSpeedMultiplier;
+            var rawGrindAmount = toolValues.Speed * MyAPIGateway.Session.GrinderSpeedMultiplier;
+            var nonFriendlyGrindAmount = (toolValues.Speed - toolValues.Speed * comp.ModeData.Definition.NonFriendlyMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
+            var grindAmount = 0f;
+            var toolFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(comp.IsBlock ? comp.BlockTool.OwnerId : comp.HandTool.OwnerIdentityId);
 
             var count = 0;
             for (int i = 0; i <= comp.MaxLayer; i++)
@@ -540,6 +543,15 @@ namespace ToolCore
                     {
                         if (def.Debug) comp.DebugDrawBlock(slim, Color.Red);
                         continue;
+                    }
+                    grindAmount = rawGrindAmount;
+
+                    if (comp.ModeData.Definition.NonFriendlyMult != 0)
+                    {
+                        var blockOwner = grid.BigOwners != null && grid.BigOwners != null && grid.BigOwners.Count > 0 ? grid.BigOwners[0] : 0;
+                        var rel = comp.GetRelationToPlayer(blockOwner, toolFaction);
+                        if (rel == TargetTypes.Hostile || rel == TargetTypes.Neutral)
+                            grindAmount = nonFriendlyGrindAmount;
                     }
 
                     comp.Working = true;
@@ -566,19 +578,31 @@ namespace ToolCore
                     MyDamageInformation damageInfo = new MyDamageInformation(false, grindAmount, MyDamageType.Grind, comp.ToolEntity.EntityId);
                     if (slim.UseDamageSystem) ToolSession.Instance.Session.DamageSystem.RaiseBeforeDamageApplied(slim, ref damageInfo);
 
-                    slim.DecreaseMountLevel(damageInfo.Amount, inventory, false);
-                    slim.MoveItemsFromConstructionStockpile(inventory, MyItemFlags.None);
+
+                    if (comp.ModeData.Definition.GrindToWaste)
+                    {
+                        slim.DecreaseMountLevel(damageInfo.Amount, null, false);
+                        slim.MoveItemsFromConstructionStockpile(null, MyItemFlags.None);
+                    }
+                    else
+                    {
+                        slim.DecreaseMountLevel(damageInfo.Amount, inventory, false);
+                        slim.MoveItemsFromConstructionStockpile(inventory, MyItemFlags.None);
+                    }
 
                     if (slim.UseDamageSystem) ToolSession.Instance.Session.DamageSystem.RaiseAfterDamageApplied(slim, damageInfo);
 
                     if (slim.IsFullyDismounted)
                     {
-                        if (fat != null && fat.HasInventory)
+                        if (!comp.ModeData.Definition.GrindToWaste)
                         {
-                            Utils.Utils.EmptyBlockInventories((MyCubeBlock)fat, inventory);
-                        }
+                            if (fat != null && fat.HasInventory)
+                            {
+                                Utils.Utils.EmptyBlockInventories((MyCubeBlock)fat, comp.Inventory);
+                            }
 
-                        slim.SpawnConstructionStockpile();
+                            slim.SpawnConstructionStockpile();
+                        }
                         grid.RazeBlock(slim.Min);
 
                         if (def.Debug) comp.DebugDrawBlock(slim, Color.GreenYellow);

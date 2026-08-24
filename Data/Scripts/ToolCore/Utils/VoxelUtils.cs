@@ -276,9 +276,8 @@ namespace ToolCore
                 var radius = toolValues.Radius;
                 var length = toolValues.Length;
 
-                var halfLen = length / 2;
-                var halfLenPlusSqr = Math.Pow(halfLen + 0.5f, 2);
-                var halfLenMinusSqr = Math.Pow(halfLen - 0.5f, 2);
+                var lenPlusSqr = def.Location == Location.Centre ? Math.Pow(length / 2 + 0.5f, 2) : Math.Pow(length + 0.5f, 2);
+                var lenMinusSqr = Math.Pow(length - 0.5f, 2);
                 var radiusPlusSqr = (float)Math.Pow(radius + 0.5f, 2);
                 var radiusMinusSqr = (float)Math.Pow(radius - 0.5f, 2);
 
@@ -313,10 +312,10 @@ namespace ToolCore
                             continue;
                         var axial = Vector3D.ProjectOnVector(ref offset, ref forward);
                         var axialDistSqr = (float)axial.LengthSquared();
-                        if (axialDistSqr > halfLenPlusSqr)
+                        if (axialDistSqr > lenPlusSqr)
                             continue;
 
-                        var axialDist = axialDistSqr > halfLenMinusSqr ? halfLen + 0.5f - (float)Math.Sqrt(axialDistSqr) : 1f;
+                        var axialDist = axialDistSqr > lenMinusSqr ? length + 0.5f - (float)Math.Sqrt(axialDistSqr) : 1f;
                         var radialDist = radialDistSqr > radiusMinusSqr ? radius + 0.5f - (float)Math.Sqrt(radialDistSqr) : 1f;
 
                         var dist = 0f;
@@ -329,10 +328,10 @@ namespace ToolCore
                                 dist = radius - (float)radial.Length();
                                 break;
                             case WorkOrder.Forward:
-                                dist = length / 2f + (float)axial.Length() * Math.Sign(Vector3D.Dot(axial, forward));
+                                dist = length + (float)axial.Length() * Math.Sign(Vector3D.Dot(axial, forward));
                                 break;
                             case WorkOrder.Backward:
-                                dist = length / 2f - (float)axial.Length() * Math.Sign(Vector3D.Dot(axial, forward));
+                                dist = length - (float)axial.Length() * Math.Sign(Vector3D.Dot(axial, forward));
                                 break;
                             default:
                                 break;
