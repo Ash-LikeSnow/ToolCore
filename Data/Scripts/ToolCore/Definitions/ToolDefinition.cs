@@ -27,6 +27,7 @@ namespace ToolCore.Definitions
         internal readonly float ActivePower;
         internal readonly float IdlePower;
         internal readonly float NonFriendlyMult;
+        internal readonly float NPCMult;
         internal readonly bool DamageCharacters;
         internal readonly bool PickUpFloatings;
         internal readonly bool AffectOwnGrid;
@@ -308,6 +309,7 @@ namespace ToolCore.Definitions
             ShowTargetControls = values.ShowTargetControls;
             NonFriendlyMult = values.NonFriendlyMult;
             GrindToWaste = values.GrindToWaste;
+            NPCMult = values.NPCMult;
 
             DefineParameters(values, session);
             IsTurret = DefineTurret(values.Turret, out Turret);

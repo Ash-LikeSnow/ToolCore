@@ -4,6 +4,7 @@ using Sandbox.ModAPI;
 using System;
 using ToolCore.Utils;
 using VRage.Game.Components;
+using VRage.Utils;
 
 namespace ToolCore.Session
 {
@@ -62,6 +63,14 @@ namespace ToolCore.Session
                 else
                 {
                     MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(Networking.ClientPacketId, Networking.ProcessPacket);
+                }
+            }
+            foreach (var faction in MyAPIGateway.Session.Factions.Factions)
+            {
+                if (!faction.Value.AcceptHumans || faction.Value.IsEveryoneNpc())
+                {
+                    foreach (var mbr in faction.Value.Members.Values)
+                        npcIDList.Add(mbr.PlayerId);
                 }
             }
 

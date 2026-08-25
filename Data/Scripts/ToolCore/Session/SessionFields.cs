@@ -53,6 +53,7 @@ namespace ToolCore.Session
         internal readonly List<GridComp> GridList = new List<GridComp>();
         internal readonly List<IMySlimBlock> TempBlocks = new List<IMySlimBlock>();
         internal readonly List<MyEntity> Entities = new List<MyEntity>();
+        internal static List<long> npcIDList = new List<long>();
         internal readonly ConcurrentCachingList<ToolComp> AvComps = new ConcurrentCachingList<ToolComp>();
 
         private readonly HashSet<MyCubeGrid> _controlledGrids = new HashSet<MyCubeGrid>();
@@ -98,6 +99,7 @@ namespace ToolCore.Session
 
         private void Clean()
         {
+            npcIDList.Clear();
             GridCompPool.Clear();
             DrillDataPool.Clear();
 

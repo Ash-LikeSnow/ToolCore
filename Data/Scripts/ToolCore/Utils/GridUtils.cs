@@ -521,6 +521,7 @@ namespace ToolCore
             var maxBlocks = def.Rate;
             var rawGrindAmount = toolValues.Speed * MyAPIGateway.Session.GrinderSpeedMultiplier;
             var nonFriendlyGrindAmount = (toolValues.Speed - toolValues.Speed * comp.ModeData.Definition.NonFriendlyMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
+            var NPCGrindAmount = (toolValues.Speed - toolValues.Speed * comp.ModeData.Definition.NPCMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
             var grindAmount = 0f;
             var toolFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(comp.IsBlock ? comp.BlockTool.OwnerId : comp.HandTool.OwnerIdentityId);
 
@@ -546,9 +547,13 @@ namespace ToolCore
                     }
                     grindAmount = rawGrindAmount;
 
-                    if (comp.ModeData.Definition.NonFriendlyMult != 0)
+                    var blockOwner = grid.BigOwners != null && grid.BigOwners != null && grid.BigOwners.Count > 0 ? grid.BigOwners[0] : 0;
+                    if (comp.ModeData.Definition.NPCMult != 0 && ToolSession.npcIDList.Contains(blockOwner))
                     {
-                        var blockOwner = grid.BigOwners != null && grid.BigOwners != null && grid.BigOwners.Count > 0 ? grid.BigOwners[0] : 0;
+                        grindAmount = NPCGrindAmount;
+                    }
+                    else if (comp.ModeData.Definition.NonFriendlyMult != 0)
+                    {
                         var rel = comp.GetRelationToPlayer(blockOwner, toolFaction);
                         if (rel == TargetTypes.Hostile || rel == TargetTypes.Neutral)
                             grindAmount = nonFriendlyGrindAmount;
