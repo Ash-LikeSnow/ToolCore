@@ -318,10 +318,14 @@ namespace ToolCore.Session
                 if (soundPair == null)
                     return;
 
-                emitter.PlaySound(soundPair);
+                emitter.PlaySound(soundPair, force3D: true);
                 //Logs.WriteLine($"Playing sound {sound.Name}");
             }
 
+            // ✅ Ensure the emitter updates to check distance and restart if needed
+            // This is if a tool block was activate far away from a player it will restart
+            // the sound when the player comes within range again.
+            emitter.Update();
         }
 
     }
