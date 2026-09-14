@@ -43,10 +43,10 @@ namespace ToolCore
             try
             {
                 var session = ToolSession.Instance;
-                var modeData = comp.ModeData;
+                var modeData = comp.ModeMap[comp.Mode];
                 var def = modeData.Definition;
                 var drillData = (DrillData)workData;
-                var toolValues = comp.Values;
+                var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
                 var forward = drillData.Direction;
                 var radius = toolValues.Radius;
                 var extendedRadius = radius + 0.5f;
@@ -262,9 +262,9 @@ namespace ToolCore
             try
             {
                 var session = ToolSession.Instance;
-                var modeData = comp.ModeData;
+                var modeData = comp.ModeMap[comp.Mode];
                 var def = modeData.Definition;
-                var toolValues = comp.Values;
+                var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
                 var drillData = (DrillData)workData;
 
                 var voxel = drillData.Voxel;
@@ -465,11 +465,11 @@ namespace ToolCore
         internal static void DrillLine(this ToolComp comp, WorkData workData)
         {
             var session = ToolSession.Instance;
-            var modeData = comp.ModeData;
+            var modeData = comp.ModeMap[comp.Mode];
             var def = modeData.Definition;
 
             var drillData = (DrillData)workData;
-            var toolValues = comp.Values;
+            var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
             var origin = drillData.Origin;
             var worldForward = drillData.Direction;
             var length = toolValues.Length;
@@ -711,10 +711,10 @@ namespace ToolCore
             try
             {
                 var session = ToolSession.Instance;
-                var modeData = comp.ModeData;
+                var modeData = comp.ModeMap[comp.Mode];
                 var def = modeData.Definition;
                 var drillData = (DrillData)workData;
-                var toolValues = comp.Values;
+                var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
                 var forward = drillData.Direction;
                 var radius = toolValues.BoundingRadius;
                 var hE = toolValues.HalfExtent;

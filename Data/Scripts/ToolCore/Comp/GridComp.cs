@@ -15,11 +15,13 @@ namespace ToolCore.Comp
         internal MyCubeGrid Grid;
         internal GroupMap GroupMap;
 
-        internal readonly List<ToolComp> ToolComps = new List<ToolComp>();
+        internal readonly HashSet<ToolComp> ToolComps = new HashSet<ToolComp>();
 
         internal long CompTick60;
         internal long CompTick20;
+        internal long LastSafezoneTick = 0;
 
+        internal bool NearSafezone;
         internal bool UnderControl;
         internal bool Dirty;
 
@@ -81,6 +83,13 @@ namespace ToolCore.Comp
             }
         }
 
+        internal void UpdateGridSafezone()
+        {
+            LastSafezoneTick = ToolSession.Tick;
+            var nearby = MySessionComponentSafeZones.GetSafeZonesInAABB(Grid.PositionComp.WorldAABB);
+            NearSafezone = nearby.Count > 0;
+        }
+
         private void FatBlockRemoved(MyCubeBlock block)
         {
             if (block is IMyConveyorSorter)
@@ -88,6 +97,7 @@ namespace ToolCore.Comp
                 ToolComp comp;
                 if (ToolSession.Instance.ToolMap.TryGetValue(block.EntityId, out comp) && comp?.GunBase != null && ToolComps.Remove(comp))
                 {
+                    ToolSession.Instance.ToolMap.Remove(block.EntityId);
                     if (!Grid.MarkedForClose)
                     {
                         var weaponSystem = ((IMyCubeGrid)Grid).WeaponSystem;

@@ -39,7 +39,7 @@ namespace ToolCore.Definitions
 
         internal readonly TurretDefinition Turret;
 
-        internal Vector3D Offset;
+        internal Vector3D Offset = Vector3D.Zero;
         internal BoundingSphereD EffectSphere;
         internal BoundingBox EffectBox;
 

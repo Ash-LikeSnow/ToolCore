@@ -187,7 +187,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return false;
 
-            return comp.Activated;
+            return comp._activated;
         }
 
         internal void SetActivated(IMyTerminalBlock block, bool activated)
@@ -196,10 +196,10 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasActivated = comp.Activated;
+            var wasActivated = comp._activated;
             comp.Activated = activated;
 
-            if (!_session.IsMultiPlayer || comp.Activated == wasActivated) return;
+            if (!_session.IsMultiPlayer || comp._activated == wasActivated) return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, activated));
         }
@@ -222,13 +222,13 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasActivated = comp.Activated;
-            comp.Activated = !comp.Activated;
+            var wasActivated = comp._activated;
+            comp.Activated = !comp._activated;
 
-            if (!_session.IsMultiPlayer || comp.Activated == wasActivated)
+            if (!_session.IsMultiPlayer || comp._activated == wasActivated)
                 return;
 
-            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, comp.Activated));
+            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, comp._activated));
         }
 
         internal void ToggleActivatedWriter(IMyTerminalBlock block, StringBuilder builder)
@@ -237,7 +237,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            builder.Append(comp.Activated ? "Active" : "Inactive");
+            builder.Append(comp._activated ? "Active" : "Inactive");
         }
 
         internal IMyTerminalAction CreateActivateOnAction<T>() where T : IMyConveyorSorter
@@ -258,10 +258,10 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasActivated = comp.Activated;
+            var wasActivated = comp._activated;
             comp.Activated = true;
 
-            if (!_session.IsMultiPlayer || comp.Activated == wasActivated)
+            if (!_session.IsMultiPlayer || comp._activated == wasActivated)
                 return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, true));
@@ -273,7 +273,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            builder.Append(comp.Activated ? "Active" : "Inactive");
+            builder.Append(comp._activated ? "Active" : "Inactive");
         }
 
         internal IMyTerminalAction CreateActivateOffAction<T>() where T : IMyConveyorSorter
@@ -294,10 +294,10 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasActivated = comp.Activated;
-            comp.Activated = false;
+            var wasActivated = comp._activated;
+            comp._activated = false;
 
-            if (!_session.IsMultiPlayer || comp.Activated == wasActivated)
+            if (!_session.IsMultiPlayer || comp._activated == wasActivated)
                 return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.Activated, false));
@@ -309,7 +309,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            builder.Append(comp.Activated ? "Active" : "Inactive");
+            builder.Append(comp._activated ? "Active" : "Inactive");
         }
 
         #endregion
@@ -453,7 +453,7 @@ namespace ToolCore.Session
 
             var id = 0;
             _actionList.Clear();
-            var actions = comp.ModeData.Definition.ToolActions;
+            var actions = comp.ModeMap[comp.Mode].Definition.ToolActions;
             for (int i = 0; i < actions.Count; i++)
             {
                 var action = actions[i];
@@ -473,7 +473,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var actions = comp.ModeData.Definition.ToolActions;
+            var actions = comp.ModeMap[comp.Mode].Definition.ToolActions;
             comp.Action = actions[(int)id];
 
             if (!_session.IsMultiPlayer) return;
@@ -487,7 +487,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return false;
 
-            return comp.ModeData.Definition.ToolActions.Count > 1;
+            return comp.ModeMap[comp.Mode].Definition.ToolActions.Count > 1;
         }
 
         internal IMyTerminalAction CreateActionAction<T>() where T : IMyConveyorSorter
@@ -508,11 +508,11 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var actions = comp.ModeData.Definition.ToolActions;
+            var actions = comp.ModeMap[comp.Mode].Definition.ToolActions;
             var index = actions.IndexOf(comp.Action);
             var next = index + 1;
             var newIndex = next < actions.Count ? next : 0;
-            comp.Action = comp.ModeData.Definition.ToolActions[newIndex];
+            comp.Action = comp.ModeMap[comp.Mode].Definition.ToolActions[newIndex];
 
             if (!_session.IsMultiPlayer) return;
 
@@ -643,7 +643,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return false;
 
-            return comp.ModeData.Definition.IsTurret;
+            return comp.ModeMap[comp.Mode].Definition.IsTurret;
         }
 
         internal bool ShowTargetControls(IMyTerminalBlock block)
@@ -691,7 +691,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return false;
 
-            return comp.TrackTargets;
+            return comp._trackTargets;
         }
 
         internal void SetTrackTargets(IMyTerminalBlock block, bool enabled)
@@ -700,10 +700,10 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasTracking = comp.TrackTargets;
+            var wasTracking = comp._trackTargets;
             comp.TrackTargets = enabled;
 
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasTracking) return;
+            if (!_session.IsMultiPlayer || comp._trackTargets == wasTracking) return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, enabled));
         }
@@ -726,13 +726,13 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasEnabled = comp.TrackTargets;
-            comp.TrackTargets = !comp.TrackTargets;
+            var wasEnabled = comp._trackTargets;
+            comp.TrackTargets = !comp._trackTargets;
 
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
+            if (!_session.IsMultiPlayer || comp._trackTargets == wasEnabled)
                 return;
 
-            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, comp.TrackTargets));
+            _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, comp._trackTargets));
         }
 
         internal void ToggleTrackTargetsWriter(IMyTerminalBlock block, StringBuilder builder)
@@ -741,7 +741,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
+            builder.Append(comp._trackTargets ? "Enabled" : "Disabled");
         }
 
         internal IMyTerminalAction CreateTrackTargetsOnAction<T>() where T : IMyConveyorSorter
@@ -762,10 +762,10 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasEnabled = comp.TrackTargets;
+            var wasEnabled = comp._trackTargets;
             comp.TrackTargets = true;
 
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
+            if (!_session.IsMultiPlayer || comp._trackTargets == wasEnabled)
                 return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, true));
@@ -777,7 +777,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
+            builder.Append(comp._trackTargets ? "Enabled" : "Disabled");
         }
 
         internal IMyTerminalAction CreateTrackTargetsOffAction<T>() where T : IMyConveyorSorter
@@ -798,10 +798,10 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            var wasEnabled = comp.TrackTargets;
+            var wasEnabled = comp._trackTargets;
             comp.TrackTargets = false;
 
-            if (!_session.IsMultiPlayer || comp.TrackTargets == wasEnabled)
+            if (!_session.IsMultiPlayer || comp._trackTargets == wasEnabled)
                 return;
 
             _session.Networking.SendPacketToServer(new BoolUpdatePacket(comp.ToolEntity.EntityId, FieldType.TrackTargets, false));
@@ -813,7 +813,7 @@ namespace ToolCore.Session
             if (!_session.ToolMap.TryGetValue(block.EntityId, out comp))
                 return;
 
-            builder.Append(comp.TrackTargets ? "Enabled" : "Disabled");
+            builder.Append(comp._trackTargets ? "Enabled" : "Disabled");
         }
 
         #endregion
@@ -1256,6 +1256,7 @@ namespace ToolCore.Session
                 return;
 
             comp.WorkColour = newColour;
+            comp.WorkColourPacked = comp.WorkColour.PackHSVToUint();
 
             comp.TargetsDirty = true;
 
@@ -1286,6 +1287,7 @@ namespace ToolCore.Session
                 return;
 
             comp.WorkColour = MyAPIGateway.Session.LocalHumanPlayer.SelectedBuildColor;
+            comp.WorkColourPacked = comp.WorkColour.PackHSVToUint();
 
             comp.TargetsDirty = true;
 

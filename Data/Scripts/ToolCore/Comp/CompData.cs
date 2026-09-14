@@ -17,14 +17,14 @@ namespace ToolCore.Comp
 
         internal void Sync(ToolComp comp)
         {
-            Activated = comp.Activated;
+            Activated = comp._activated;
             Draw = comp.Draw;
             Mode = (byte)comp.Mode;
             Action = (byte)comp.Action;
             Targets = (byte)comp.Targets;
             UseWorkColour = comp.UseWorkColour;
             WorkColour = comp.WorkColour;
-            TrackTargets = comp.TrackTargets;
+            TrackTargets = comp._trackTargets;
         }
     }
 }

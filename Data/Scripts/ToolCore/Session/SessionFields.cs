@@ -49,8 +49,7 @@ namespace ToolCore.Session
         internal readonly ConcurrentDictionary<long, IMyPlayer> PlayerMap = new ConcurrentDictionary<long, IMyPlayer>();
 
         internal readonly List<Trigger> Triggers = new List<Trigger>((Trigger[])Enum.GetValues(typeof(Trigger)));
-        internal readonly List<ToolComp> HandTools = new List<ToolComp>();
-        internal readonly List<GridComp> GridList = new List<GridComp>();
+        internal readonly HashSet<GridComp> GridList = new HashSet<GridComp>();
         internal readonly List<IMySlimBlock> TempBlocks = new List<IMySlimBlock>();
         internal readonly List<MyEntity> Entities = new List<MyEntity>();
         internal static List<long> npcIDList = new List<long>();
@@ -116,7 +115,6 @@ namespace ToolCore.Session
             GridMap.Clear();
             PlayerMap.Clear();
 
-            HandTools.Clear();
             GridList.Clear();
             AvComps.ClearImmediate();
 

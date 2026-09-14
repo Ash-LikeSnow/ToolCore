@@ -124,6 +124,7 @@ namespace ToolCore.Session
                     var packedHsv = ((UintUpdatePacket)packet).Value;
                     var hsv = ColorExtensions.UnpackHSVFromUint(packedHsv);
                     comp.WorkColour = hsv;
+                    comp.WorkColourPacked = comp.WorkColour.PackHSVToUint();
                     comp.TargetsDirty = true;
                     break;
                 default:

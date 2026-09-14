@@ -40,9 +40,9 @@ namespace ToolCore
         {
             try
             {
-                var modeData = comp.ModeData;
+                var modeData = comp.ModeMap[comp.Mode];
                 var def = modeData.Definition;
-                var toolValues = comp.Values;
+                var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
                 var data = comp.GridData;
 
                 for (int i = 0; i < data.Grids.Count; i++)
@@ -448,7 +448,7 @@ namespace ToolCore
 
             try
             {
-                var modeData = comp.ModeData;
+                var modeData = comp.ModeMap[comp.Mode];
                 var def = modeData.Definition;
                 var workSet = comp.WorkSet;
                 var layers = comp.HitBlockLayers;
@@ -514,14 +514,14 @@ namespace ToolCore
 
         internal static void GrindBlocks(this ToolComp comp)
         {
-            var modeData = comp.ModeData;
+            var modeData = comp.ModeMap[comp.Mode];
             var def = modeData.Definition;
             var inventory = comp.Inventory;
-            var toolValues = comp.Values;
+            var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
             var maxBlocks = def.Rate;
             var rawGrindAmount = toolValues.Speed * MyAPIGateway.Session.GrinderSpeedMultiplier;
-            var nonFriendlyGrindAmount = (toolValues.Speed - toolValues.Speed * comp.ModeData.Definition.NonFriendlyMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
-            var NPCGrindAmount = (toolValues.Speed - toolValues.Speed * comp.ModeData.Definition.NPCMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
+            var nonFriendlyGrindAmount = (toolValues.Speed - toolValues.Speed * modeData.Definition.NonFriendlyMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
+            var NPCGrindAmount = (toolValues.Speed - toolValues.Speed * modeData.Definition.NPCMult) * MyAPIGateway.Session.GrinderSpeedMultiplier;
             var grindAmount = 0f;
             var toolFaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(comp.IsBlock ? comp.BlockTool.OwnerId : comp.HandTool.OwnerIdentityId);
 
@@ -548,11 +548,11 @@ namespace ToolCore
                     grindAmount = rawGrindAmount;
 
                     var blockOwner = grid.BigOwners != null && grid.BigOwners != null && grid.BigOwners.Count > 0 ? grid.BigOwners[0] : 0;
-                    if (comp.ModeData.Definition.NPCMult != 0 && ToolSession.npcIDList.Contains(blockOwner))
+                    if (modeData.Definition.NPCMult != 0 && ToolSession.npcIDList.Contains(blockOwner))
                     {
                         grindAmount = NPCGrindAmount;
                     }
-                    else if (comp.ModeData.Definition.NonFriendlyMult != 0)
+                    else if (modeData.Definition.NonFriendlyMult != 0)
                     {
                         var rel = comp.GetRelationToPlayer(blockOwner, toolFaction);
                         if (rel == TargetTypes.Hostile || rel == TargetTypes.Neutral)
@@ -584,7 +584,7 @@ namespace ToolCore
                     if (slim.UseDamageSystem) ToolSession.Instance.Session.DamageSystem.RaiseBeforeDamageApplied(slim, ref damageInfo);
 
 
-                    if (comp.ModeData.Definition.GrindToWaste)
+                    if (modeData.Definition.GrindToWaste)
                     {
                         slim.DecreaseMountLevel(damageInfo.Amount, null, false);
                         slim.MoveItemsFromConstructionStockpile(null, MyItemFlags.None);
@@ -599,7 +599,7 @@ namespace ToolCore
 
                     if (slim.IsFullyDismounted)
                     {
-                        if (!comp.ModeData.Definition.GrindToWaste)
+                        if (!modeData.Definition.GrindToWaste)
                         {
                             if (fat != null && fat.HasInventory)
                             {
@@ -630,10 +630,10 @@ namespace ToolCore
 
         internal static void WeldBlocks(this ToolComp comp)
         {
-            var modeData = comp.ModeData;
+            var modeData = comp.ModeMap[comp.Mode];
             var def = modeData.Definition;
             var inventory = comp.Inventory;
-            var toolValues = comp.Values;
+            var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
             var maxBlocks = def.Rate;
             var ownerId = comp.IsBlock ? comp.BlockTool.OwnerId : comp.HandTool.OwnerIdentityId;
             var steamId = MyAPIGateway.Players.TryGetSteamId(ownerId);
@@ -877,10 +877,10 @@ namespace ToolCore
         internal static void WeldBlocksBulk(this ToolComp comp)
         {
             var session = ToolSession.Instance;
-            var modeData = comp.ModeData;
+            var modeData = comp.ModeMap[comp.Mode];
             var def = modeData.Definition;
             var inventory = comp.Inventory;
-            var toolValues = comp.Values;
+            var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
             var tool = comp.ToolEntity;
             var tempBlocks = session.TempBlocks;
             var maxBlocks = def.Rate;
@@ -1135,9 +1135,9 @@ namespace ToolCore
         {
             try
             {
-                var modeData = comp.ModeData;
+                var modeData = comp.ModeMap[comp.Mode];
                 var def = modeData.Definition;
-                var toolValues = comp.Values;
+                var toolValues = modeData.Definition.ActionMap[comp.GunBase.Shooting ? comp.GunBase.GunAction : comp.Action];
                 var data = comp.GridData;
 
                 for (int i = 0; i < data.Grids.Count; i++)
@@ -1232,7 +1232,7 @@ namespace ToolCore
             try
             {
                 var session = ToolSession.Instance;
-                var turret = comp.ModeData.Turret;
+                var turret = comp.ModeMap[comp.Mode].Turret;
 
                 for (int i = comp.MaxLayer; i > 0; i--)
                 {

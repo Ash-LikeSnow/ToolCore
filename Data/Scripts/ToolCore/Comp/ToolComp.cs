@@ -127,30 +127,16 @@ namespace ToolCore.Comp
         internal int LastPushTick;
         internal int ActiveThreads;
         internal int BrokenTick;
-
+        internal int LastWorldVectorCalcTick;
         internal int LastGridsTaskTick;
 
         internal volatile bool CallbackComplete = true;
         internal volatile int MaxLayer;
 
         internal uint WorkColourPacked;
+        internal Vector3 WorkColour;
 
-        private Vector3 _workColour;
-        internal Vector3 WorkColour
-        {
-            get
-            {
-                return _workColour;
-            }
-            set
-            {
-                _workColour = value;
-
-                WorkColourPacked = _workColour.PackHSVToUint();
-            }
-        }
-
-        private bool _activated;
+        internal bool _activated;
 
         internal bool Activated
         {
@@ -171,24 +157,6 @@ namespace ToolCore.Comp
                     //WasHitting = false;
                     UpdateHitInfo(false);
                 }
-            }
-        }
-
-        internal ActionDefinition Values
-        {
-            get
-            {
-                var action = GunBase.Shooting ? GunBase.GunAction : Action;
-                var modeData = ModeMap[Mode];
-                return modeData.Definition.ActionMap[action];
-            }
-        }
-
-        internal ModeSpecificData ModeData
-        {
-            get
-            {
-                return ModeMap[Mode];
             }
         }
 
@@ -421,7 +389,7 @@ namespace ToolCore.Comp
 
         private void AppendingCustomData(IMyTerminalBlock block, StringBuilder builder)
         {
-            var modeData = ModeData;
+            var modeData = ModeMap[Mode];
             if (modeData.Turret == null)
                 return;
 
@@ -443,7 +411,7 @@ namespace ToolCore.Comp
             internal TurretComp Turret;
             internal MyEntity MuzzlePart;
             internal IMyModelDummy Muzzle;
-
+            internal MatrixD cachedDummyMatrix;
             internal bool FullInit;
             internal bool HasEmitter;
 
@@ -474,7 +442,7 @@ namespace ToolCore.Comp
 
                 HasEmitter = true;
                 MuzzlePart = comp.DummyMap[Muzzle];
-
+                cachedDummyMatrix = MatrixD.Normalize(Muzzle.Matrix);
                 var functional = !comp.IsBlock || comp.BlockTool.IsFunctional;
                 if (!HasEmitter && functional && Definition.Location == Location.Emitter)
                     Definition.Location = Location.Centre;
@@ -673,9 +641,9 @@ namespace ToolCore.Comp
         internal void UpdateAvState(Trigger state, bool add)
         {
             //Logs.WriteLine($"UpdateAvState() {state} {add} {force}");
-            var data = ModeData;
+            var data = ModeMap[Mode];
 
-            var keepFiring = !add && (Activated || GunBase.Shooting) && (state & Trigger.Firing) > 0;
+            var keepFiring = !add && (_activated || GunBase.Shooting) && (state & Trigger.Firing) > 0;
 
             foreach (var flag in ToolSession.Instance.Triggers)
             {
@@ -712,7 +680,7 @@ namespace ToolCore.Comp
             if (ToolSession.Instance.IsDedicated) return; //TEMPORARY!!! or not?
 
             Effects effects;
-            if (!ModeData.EffectsMap.TryGetValue(state, out effects))
+            if (!ModeMap[Mode].EffectsMap.TryGetValue(state, out effects))
                 return;
 
             if (!add)
@@ -808,7 +776,7 @@ namespace ToolCore.Comp
         {
             var sinkInfo = new MyResourceSinkInfo()
             {
-                MaxRequiredInput = ModeData.Definition.ActivePower,
+                MaxRequiredInput = ModeMap[Mode].Definition.ActivePower,
                 RequiredInputFunc = RequiredInput,
                 ResourceTypeId = MyResourceDistributorComponent.ElectricityId
             };
@@ -842,10 +810,10 @@ namespace ToolCore.Comp
             if (!Functional || !Enabled)
                 return 0f;
 
-            if (Activated || Working || GunBase.WantsToShoot)
-                return ModeData.Definition.ActivePower;
+            if (_activated || Working || GunBase.WantsToShoot)
+                return ModeMap[Mode].Definition.ActivePower;
 
-            return ModeData.Definition.IdlePower;
+            return ModeMap[Mode].Definition.IdlePower;
         }
 
         internal void OnDrillComplete(WorkData data)
@@ -872,7 +840,7 @@ namespace ToolCore.Comp
             ActiveThreads--;
             if (ActiveThreads > 0) return;
 
-            var isHitting = Functional && Powered && Enabled && Working && (Activated || GunBase.Shooting);
+            var isHitting = Functional && Powered && Enabled && Working && (_activated || GunBase.Shooting);
             if (isHitting != WasHitting)
             {
                 UpdateAvState(Trigger.Hit, isHitting);
@@ -881,122 +849,119 @@ namespace ToolCore.Comp
             Working = false;
         }
 
-        internal void ManageInventory(Vector3D worldPos, Vector3D worldForward, Vector3D worldUp)
+        internal void ManageBlockInventory()
         {
             var session = ToolSession.Instance;
             var tryUpdate = ToolSession.Tick - LastPushTick > 1200;
-            //Logs.WriteLine($"ManageInventory() {LastPushSucceeded} : {ToolSession.Tick - LastPushTick}");
-
-            if (IsBlock)
+            foreach (var ore in Yields.Keys)
             {
-                foreach (var ore in Yields.Keys)
+                var gross = Yields[ore];
+                if (!LastPushSucceeded && !tryUpdate && FailedPushes.Contains(ore))
                 {
-                    var gross = Yields[ore];
-                    if (!LastPushSucceeded && !tryUpdate && FailedPushes.Contains(ore))
-                    {
-                        session.TempItems[ore] = gross;
-                        continue;
-                    }
-                    var oreOb = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Ore>(ore);
-                    var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(oreOb);
-                    var itemVol = itemDef.Volume;
-                    var amount = (MyFixedPoint)(gross / itemDef.Volume);
-                    //Logs.WriteLine($"Holding {amount} ore");
+                    session.TempItems[ore] = gross;
+                    continue;
+                }
+                var oreOb = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Ore>(ore);
+                var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(oreOb);
+                var itemVol = itemDef.Volume;
+                var amount = (MyFixedPoint)(gross / itemDef.Volume);
+                //Logs.WriteLine($"Holding {amount} ore");
 
-                    MyFixedPoint transferred;
-                    Grid.ConveyorSystem.PushGenerateItem(itemDef.Id, amount, out transferred, BlockTool, false);
-                    //Logs.WriteLine($"Pushed {transferred}");
+                MyFixedPoint transferred;
+                Grid.ConveyorSystem.PushGenerateItem(itemDef.Id, amount, out transferred, BlockTool, false);
+                //Logs.WriteLine($"Pushed {transferred}");
 
-                    amount -= transferred;
-                    if (amount == MyFixedPoint.Zero)
-                    {
-                        LastPushSucceeded = true;
-                        FailedPushes.Remove(ore);
-                        continue;
-                    }
-
-                    if (FailedPushes.Add(ore))
-                    {
-                        session.TempItems[ore] = (float)amount * itemVol;
-                        LastPushSucceeded = true;
-                        continue;
-                    }
-
-                    LastPushSucceeded = false;
-
-                    var fits = Inventory.ComputeAmountThatFits(itemDef.Id);
-                    var toAdd = amount;
-                    if (fits < amount)
-                    {
-                        toAdd = fits;
-                        amount -= fits;
-                        session.TempItems[ore] = (float)amount * itemVol;
-                    }
-                    Inventory.AddItems(toAdd, oreOb);
-                    //Logs.WriteLine($"Added {toAdd}");
+                amount -= transferred;
+                if (amount == MyFixedPoint.Zero)
+                {
+                    LastPushSucceeded = true;
+                    FailedPushes.Remove(ore);
+                    continue;
                 }
 
-                Yields.Clear();
-                foreach (var yield in session.TempItems)
+                if (FailedPushes.Add(ore))
                 {
-                    Yields[yield.Key] = yield.Value;
+                    session.TempItems[ore] = (float)amount * itemVol;
+                    LastPushSucceeded = true;
+                    continue;
                 }
-                session.TempItems.Clear();
 
-                if (!(LastPushSucceeded || tryUpdate) || Inventory.Empty())
+                LastPushSucceeded = false;
+
+                var fits = Inventory.ComputeAmountThatFits(itemDef.Id);
+                var toAdd = amount;
+                if (fits < amount)
+                {
+                    toAdd = fits;
+                    amount -= fits;
+                    session.TempItems[ore] = (float)amount * itemVol;
+                }
+                Inventory.AddItems(toAdd, oreOb);
+                //Logs.WriteLine($"Added {toAdd}");
+            }
+
+            Yields.Clear();
+            foreach (var yield in session.TempItems)
+            {
+                Yields[yield.Key] = yield.Value;
+            }
+            session.TempItems.Clear();
+
+            if (!(LastPushSucceeded || tryUpdate) || Inventory.Empty())
+                return;
+
+            var items = new List<MyPhysicalInventoryItem>(Inventory.GetItems());
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                MyFixedPoint transferred;
+                LastPushSucceeded = Grid.ConveyorSystem.PushGenerateItem(item.Content.GetId(), item.Amount, out transferred, BlockTool, false);
+                if (!LastPushSucceeded)
+                    break;
+
+                Inventory.RemoveItems(item.ItemId, transferred);
+            }
+        }
+        internal void ManageHandInventory(Vector3D worldPos, Vector3D worldForward, Vector3D worldUp)
+        {
+            var session = ToolSession.Instance;
+            var tryUpdate = ToolSession.Tick - LastPushTick > 1200;
+            foreach (var ore in Yields.Keys)
+            {
+                var gross = Yields[ore];
+                var oreOb = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Ore>(ore);
+                var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(oreOb);
+                var itemVol = itemDef.Volume;
+                var amount = (MyFixedPoint)(gross / itemDef.Volume);
+                var fits = Inventory.ComputeAmountThatFits(itemDef.Id);
+                var toAdd = amount;
+                if (fits < amount)
+                {
+                    toAdd = fits;
+                    amount -= fits;
+                }
+                Inventory.AddItems(toAdd, oreOb);
+                if (amount <= 0)
                     return;
 
-                var items = new List<MyPhysicalInventoryItem>(Inventory.GetItems());
-                for (int i = 0; i < items.Count; i++)
+                //Floaters
+                var oreItem = new MyPhysicalInventoryItem(amount, oreOb, 1f);
+                var sphere = new BoundingSphereD();//Vanilla offset -0.25, radius 0.35, offset does not appear to be used though
+                sphere.Center = worldPos - worldForward * 0.35;
+                sphere.Radius = 0.35;
+                var material = MyDefinitionManager.Static.GetVoxelMaterialDefinition(ore);
+                Action<MyEntity> onDone;
+                onDone = (delegate (MyEntity entity)
                 {
-                    var item = items[i];
-                    MyFixedPoint transferred;
-                    LastPushSucceeded = Grid.ConveyorSystem.PushGenerateItem(item.Content.GetId(), item.Amount, out transferred, BlockTool, false);
-                    if (!LastPushSucceeded)
-                        break;
+                    entity.Physics.LinearVelocity = MyUtils.GetRandomVector3HemisphereNormalized(worldForward) * MyUtils.GetRandomFloat(1.5f, 4f);
+                    entity.Physics.AngularVelocity = MyUtils.GetRandomVector3Normalized() * MyUtils.GetRandomFloat(4f, 8f);
+                });
+                MyFloatingObjects.Spawn(oreItem, sphere, null, material, onDone);
+                //TODO see if it's possible to invoke the vanilla "inventory full"
 
-                    Inventory.RemoveItems(item.ItemId, transferred);
-                }
             }
-            else //Hand tool
-            {
-                foreach (var ore in Yields.Keys)
-                {
-                    var gross = Yields[ore];
-                    var oreOb = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Ore>(ore);
-                    var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(oreOb);
-                    var itemVol = itemDef.Volume;
-                    var amount = (MyFixedPoint)(gross / itemDef.Volume);
-                    var fits = Inventory.ComputeAmountThatFits(itemDef.Id);
-                    var toAdd = amount;
-                    if (fits < amount)
-                    {
-                        toAdd = fits;
-                        amount -= fits;
-                    }
-                    Inventory.AddItems(toAdd, oreOb);
-                    if (amount <= 0)
-                        return;
-
-                    //Floaters
-                    var oreItem = new MyPhysicalInventoryItem(amount, oreOb, 1f);
-                    var sphere = new BoundingSphereD();//Vanilla offset -0.25, radius 0.35, offset does not appear to be used though
-                    sphere.Center = worldPos - worldForward * 0.35;
-                    sphere.Radius = 0.35;
-                    var material = MyDefinitionManager.Static.GetVoxelMaterialDefinition(ore);
-                    Action<MyEntity> onDone;
-                    onDone = (delegate (MyEntity entity)
-                    {
-                        entity.Physics.LinearVelocity = MyUtils.GetRandomVector3HemisphereNormalized(worldForward) * MyUtils.GetRandomFloat(1.5f, 4f);
-                        entity.Physics.AngularVelocity = MyUtils.GetRandomVector3Normalized() * MyUtils.GetRandomFloat(4f, 8f);
-                    });
-                    MyFloatingObjects.Spawn(oreItem, sphere, null, material, onDone);
-                    //TODO see if it's possible to invoke the vanilla "inventory full"
-
-                }
-                //TODO Grinder inventory updates?
-                Yields.Clear();
-            }
+            //TODO Grinder inventory updates?
+            Yields.Clear();
         }
 
         private void GetShowInToolbarSwitch()
@@ -1069,6 +1034,7 @@ namespace ToolCore.Comp
             Targets = (TargetTypes)repo.Targets;
             UseWorkColour = repo.UseWorkColour;
             WorkColour = repo.WorkColour;
+            WorkColourPacked = WorkColour.PackHSVToUint();
             TrackTargets = repo.TrackTargets;
         }
 
@@ -1090,7 +1056,7 @@ namespace ToolCore.Comp
                 return;
             }
 
-            ToolSession.Instance.HandTools.Remove(this);
+            ToolSession.Instance.ToolMap.Remove(ToolEntity.EntityId);
         }
 
         internal void Clean()

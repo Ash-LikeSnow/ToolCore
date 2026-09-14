@@ -115,7 +115,7 @@ namespace ToolCore.Comp
                 status = MyGunStatusEnum.OutOfPower;
                 return false;
             }
-            if (!_comp.ModeData.Definition.ActionMap.ContainsKey((ToolComp.ToolAction)action))
+            if (!_comp.ModeMap[_comp.Mode].Definition.ActionMap.ContainsKey((ToolComp.ToolAction)action))
             {
                 status = MyGunStatusEnum.Failed;
                 return false;
@@ -140,7 +140,7 @@ namespace ToolCore.Comp
 
         public Vector3 DirectionToTarget(Vector3D target)
         {
-            return _comp.ModeData.Muzzle?.Matrix.Forward ?? Vector3.Forward;
+            return _comp.ModeMap[_comp.Mode].Muzzle?.Matrix.Forward ?? Vector3.Forward;
         }
 
         public void DrawHud(IMyCameraController camera, long playerId)
@@ -156,7 +156,7 @@ namespace ToolCore.Comp
             //Logs.WriteLine($"EndShoot : {action}");
             WantsToShoot = false;
 
-            if (_comp.Activated || !Shooting)
+            if (_comp._activated || !Shooting)
                 return;
 
             var state = action == MyShootActionEnum.PrimaryAction ? Trigger.LeftClick : Trigger.RightClick;
@@ -182,12 +182,12 @@ namespace ToolCore.Comp
 
         public Vector3D GetMuzzlePosition()
         {
-            return _comp.ModeData.Muzzle?.Matrix.Translation ?? Vector3D.Zero;
+            return _comp.ModeMap[_comp.Mode].Muzzle?.Matrix.Translation ?? Vector3D.Zero;
         }
 
         public Vector3 GetShootDirection()
         {
-            return _comp.ModeData.Muzzle?.Matrix.Forward ?? Vector3.Forward;
+            return _comp.ModeMap[_comp.Mode].Muzzle?.Matrix.Forward ?? Vector3.Forward;
         }
 
         public int GetTotalAmmunitionAmount()
@@ -231,7 +231,7 @@ namespace ToolCore.Comp
             WantsToShoot = true;
             GunAction = (ToolComp.ToolAction)action;
 
-            var happy = _comp.Functional && _comp.Powered && _comp.Enabled && !_comp.Activated;
+            var happy = _comp.Functional && _comp.Powered && _comp.Enabled && !_comp._activated;
             if (Shooting == happy)
                 return;
 
@@ -251,7 +251,7 @@ namespace ToolCore.Comp
 
         internal void UpdateShootState(Trigger state)
         {
-            Shooting = WantsToShoot && _comp.Functional && _comp.Powered && _comp.Enabled && !_comp.Activated;
+            Shooting = WantsToShoot && _comp.Functional && _comp.Powered && _comp.Enabled && !_comp._activated;
 
             _comp.UpdateAvState(state, Shooting);
         }
